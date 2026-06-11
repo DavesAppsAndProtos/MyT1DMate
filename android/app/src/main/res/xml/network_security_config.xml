@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  My T1D Mate — Network Security Config
+  Session 16: Explicitly permits cleartext HTTP to 127.0.0.1 (GDH Pebble endpoint).
+  Required on Android 9+ alongside usesCleartextTraffic to allow fetch() to localhost.
+-->
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">127.0.0.1</domain>
+    <domain includeSubdomains="false">localhost</domain>
+  </domain-config>
+</network-security-config>

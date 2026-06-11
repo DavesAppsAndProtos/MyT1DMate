@@ -1,0 +1,81 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Existing permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+      android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Foreground service + notifications -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Battery optimisation exemption prompt (requested at first launch via App.js) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+      android:name=".MainApplication"
+      android:label="@string/app_name"
+      android:icon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:allowBackup="false"
+      android:theme="@style/AppTheme"
+      android:networkSecurityConfig="@xml/network_security_config">
+      
+      <receiver android:name=".PollAlarmReceiver" android:exported="false" />
+
+      <activity
+        android:name=".MainActivity"
+        android:label="@string/app_name"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTask"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+        <!-- Share target: receive images from other apps -->
+        <intent-filter>
+          <action android:name="android.intent.action.SEND" />
+          <category android:name="android.intent.category.DEFAULT" />
+          <data android:mimeType="image/*" />
+        </intent-filter>
+      </activity>
+
+      <!--
+        Static receiver for GDH app discovery (retained, no active use).
+        GDH's "Identify glucodata receivers" scan uses PackageManager which
+        only sees statically declared receivers. This entry keeps T1D Mate
+        visible in GDH's list without causing any runtime behaviour.
+      -->
+      <receiver
+        android:name=".GlucoReceiver"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="de.michelinside.glucodatahandler.ACTION_NEW_VALUE" />
+          <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+      </receiver>
+
+      <!--
+        Session 23: GlucoseForegroundService — LibreLinkUp architecture.
+        This service holds the foreground notification slot so Android cannot
+        freeze the JS polling loop when the app is backgrounded. It does NOT
+        poll the network itself — all LLU auth and polling runs in JS
+        (useLibreLinkUpService). Notification content is pushed from JS via
+        GlucoModule.updateGlucoseNotification() on every poll tick.
+      -->
+      <service
+        android:name=".GlucoseForegroundService"
+        android:foregroundServiceType="specialUse"
+        android:exported="false">
+        <property
+          android:name="android.app.PROPERTY_SPECIAL_USE_DESCRIPTION"
+          android:value="Holds a persistent foreground notification displaying real-time CGM glucose readings from the LibreLinkUp cloud API. Notification content is updated by the app's JS polling layer." />
+      </service>
+
+    </application>
+</manifest>

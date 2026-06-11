@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    My T1D Mate — notification status bar icon
+    Session 23: replaces android.R.drawable.ic_dialog_info
+
+    Blood drop silhouette — reads cleanly at 24dp in the status bar.
+    Android uses only the alpha channel in the status bar strip, so
+    the fill colour here only affects the notification shade preview.
+    Always use android:tint="@android:color/white" when referencing
+    this in a non-notification context.
+
+    ViewBox: 24×24dp (material icon grid)
+    Path: teardrop — circle base, pointed top — standard CGM/glucose icon shape.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!--
+        Blood drop path:
+        Start at tip (12, 2), curve out right, form the round base,
+        curve back up left to close at tip.
+        Derived from Material Symbols "water_drop" (Apache 2.0).
+    -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M12,2
+            C12,2 5,10.5 5,15
+            A7,7 0 0 0 19,15
+            C19,10.5 12,2 12,2
+            Z" />
+
+</vector>
