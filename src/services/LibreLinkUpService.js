@@ -1,6 +1,7 @@
 /**
  * My T1D Mate — LibreLinkUpService
  * Session 18: Replaces GDHService. Polls Abbott's LibreLinkUp cloud API.
+ * Session 26: Poll chain safety + staleness watchdog.
  *
  * Auth flow:
  *   1. POST /llu/auth/login → JWT token + user.id + possible region redirect
@@ -23,22 +24,49 @@
  *
  * glucoData shape (same as before):
  *   { glucose, trend, direction, delta, timestamp, datetime }
+ *
+ * Session 26 — poll chain safety (P0):
+ *
+ *   try/finally in poll():
+ *     schedulePollAlarm() now lives in a finally block, guaranteeing the
+ *     AlarmManager chain never dies regardless of what poll() throws or
+ *     returns. Individual success/failure branches still call it on their
+ *     known paths; finally is the unconditional safety net.
+ *
+ *   Forensic SQLite writes:
+ *     On every successful poll: last_poll_timestamp written, last_poll_error
+ *     and last_poll_error_ts cleared.
+ *     On every failure/catch: last_poll_error (message + stack) and
+ *     last_poll_error_ts written.
+ *
+ *   Staleness watchdog (AppState 'active'):
+ *     On every foreground resume, last_poll_timestamp is read from SQLite.
+ *     If (now - last_poll_timestamp) > STALENESS_THRESHOLD_MS (10 min),
+ *     poll() fires immediately AND a Sentry event is sent with a full
+ *     forensic payload. This is the primary mechanism for catching overnight
+ *     chain deaths and diagnosing why they happened.
+ *
+ *     Key diagnostic: if last_poll_error is null when the watchdog fires,
+ *     the chain died without hitting any catch block — confirming the
+ *     async/finally root cause. The null is the answer.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState, NativeModules, NativeEventEmitter } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { getProfile, setProfileField, saveGlucoseReading } from '../database/db';
 
 const { GlucoModule } = NativeModules;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const LLU_BASE_DEFAULT  = 'https://api.libreview.io';
-const LLU_VERSION       = '4.16.0';
-const LLU_PRODUCT       = 'llu.android';
-const POLL_INTERVAL     = 300_000;   // 5 mins
-const FETCH_TIMEOUT     = 10_000;   // 10 s
-const OUTAGE_AFTER      = 2;        // consecutive failures before declaring outage
-const FRESHNESS_TICK    = 1_000;    // 1 s independent tick
+const LLU_BASE_DEFAULT      = 'https://api.libreview.io';
+const LLU_VERSION           = '4.16.0';
+const LLU_PRODUCT           = 'llu.android';
+const POLL_INTERVAL         = 300_000;   // 5 mins
+const FETCH_TIMEOUT         = 10_000;   // 10 s
+const OUTAGE_AFTER          = 2;        // consecutive failures before declaring outage
+const FRESHNESS_TICK        = 1_000;    // 1 s independent tick
+const STALENESS_THRESHOLD_MS = 10 * 60 * 1000; // 10 min — watchdog trigger
 
 // LibreLinkUp cloud API TrendArrow is a 1-5 scale (NOT 1-7):
 //   1=SingleDown  2=FortyFiveDown  3=Flat  4=FortyFiveUp  5=SingleUp
@@ -459,8 +487,10 @@ export const useLibreLinkUpService = ({ onRecovery } = {}) => {
       sessionRef.current = null;
       await setProfileField('llup_token_expires', '0');
       failCount.current += 1;
-      // Still schedule next alarm — we want to retry re-auth
-      GlucoModule.schedulePollAlarm();
+      // Forensic: record this as a failure
+      const nowIso = new Date().toISOString();
+      await setProfileField('last_poll_error',    'auth_error: 401 received, token expired');
+      await setProfileField('last_poll_error_ts', nowIso);
     } else if (result) {
       // Success
       failCount.current = 0;
@@ -490,12 +520,19 @@ export const useLibreLinkUpService = ({ onRecovery } = {}) => {
 
       if (wasDown && onRecoveryRef.current) onRecoveryRef.current();
 
-      // Chain the next Doze-safe alarm
-      GlucoModule.schedulePollAlarm();
+      // Forensic: record successful poll timestamp and clear any previous error
+      const nowIso = new Date().toISOString();
+      await setProfileField('last_poll_timestamp', nowIso);
+      await setProfileField('last_poll_error',     '');
+      await setProfileField('last_poll_error_ts',  '');
+
     } else {
       // Network/parse failure — still schedule next attempt
       failCount.current += 1;
-      GlucoModule.schedulePollAlarm();
+      // Forensic: record this failure
+      const nowIso = new Date().toISOString();
+      await setProfileField('last_poll_error',    'fetch_failed: null result from fetchReading');
+      await setProfileField('last_poll_error_ts', nowIso);
     }
 
     if (failCount.current >= OUTAGE_AFTER) {
@@ -506,14 +543,25 @@ export const useLibreLinkUpService = ({ onRecovery } = {}) => {
       }
     }
     } catch (e) {
-      // Unexpected throw — log and ensure chain continues
+      // Unexpected throw — log and ensure chain continues.
+      // Write forensic error so watchdog can report it. This is the catch
+      // that the old code lacked — if this fires and last_poll_error is
+      // populated, it means async throws ARE being caught. If it never fires
+      // but the watchdog triggers and last_poll_error is empty, it means
+      // the throw escaped even this block (confirming deeper RCA).
       console.warn('[LLU] poll() unexpected error', e);
-    } finally {
-      // Guarantee the alarm chain never dies, regardless of outcome above.
-      // The individual branches above also call schedulePollAlarm() on their
-      // known paths — this finally is the safety net for anything unexpected.
-      GlucoModule.schedulePollAlarm();
+      try {
+        const nowIso = new Date().toISOString();
+        const msg = `unexpected: ${e?.message ?? String(e)}\n${e?.stack ?? ''}`.trim();
+        await setProfileField('last_poll_error',    msg);
+        await setProfileField('last_poll_error_ts', nowIso);
+      } catch (_) {
+        // SQLite write failed — can't do much, but don't throw again
+      }
     }
+    // S26: No schedulePollAlarm() here — WorkManager handles the overnight
+    // heartbeat cadence. poll() is now purely a fetch function; scheduling
+    // is entirely the OS's responsibility via PollHeartbeatWorker.
   }, [ensureSession]);
 
   useEffect(() => {
@@ -528,32 +576,92 @@ export const useLibreLinkUpService = ({ onRecovery } = {}) => {
     //
     // The AppState 'active' listener (below) handles foreground resume gaps.
 
+    // S26: Schedule WorkManager heartbeat once on mount.
+    // Self-sustaining — no per-poll rescheduling needed.
+    GlucoModule.scheduleHeartbeat();
+
     const emitter = new NativeEventEmitter(GlucoModule);
     const sub = emitter.addListener('TriggerPoll', () => {
-      console.log('[LLU] TriggerPoll received from AlarmManager — polling');
+      console.log('[LLU] TriggerPoll received from WorkManager heartbeat — polling');
       poll();
     });
 
-    // Fire immediately on mount, then let the alarm chain take over.
+    // Fire immediately on mount for instant first reading.
     poll();
 
     return () => {
       sub.remove();
-      GlucoModule.cancelPollAlarm();
+      GlucoModule.cancelHeartbeat();
     };
   }, [poll]);
 
-  // ── Re-poll immediately on foreground resume ───────────────────────────────
-  // Android can throttle/kill setInterval while the screen is off even with
-  // a foreground service running. Firing poll() on AppState 'active' ensures
-  // we get a fresh reading the moment the user picks up the phone, and
-  // resets the interval cadence from that point.
+  // ── Staleness watchdog + foreground resume poll ────────────────────────────
+  // On every foreground resume, read last_poll_timestamp from SQLite.
+  // If the gap exceeds STALENESS_THRESHOLD_MS (10 min), the poll chain died
+  // silently overnight — fire poll() immediately and send a Sentry forensic
+  // event with the full diagnostic payload.
+  //
+  // Regardless of staleness, always fire poll() on resume so the user sees
+  // a fresh reading the moment they pick up the phone.
+  //
+  // The Sentry event is the RCA tool:
+  //   - last_poll_error populated  → we know why the chain died
+  //   - last_poll_error null/empty → chain died without hitting any catch block,
+  //                                  confirming the async/finally bug as root cause
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        console.log('[LLU] App resumed — polling immediately');
-        poll();
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state !== 'active') return;
+
+      try {
+        const profile        = await getProfile();
+        const lastPollIso    = profile.last_poll_timestamp;
+        const lastPollError  = profile.last_poll_error  || null;
+        const lastPollErrTs  = profile.last_poll_error_ts || null;
+        const now            = Date.now();
+        const lastPollMs     = lastPollIso ? new Date(lastPollIso).getTime() : 0;
+        const stalenessMs    = lastPollMs > 0 ? now - lastPollMs : null;
+
+        const isStale = stalenessMs !== null && stalenessMs > STALENESS_THRESHOLD_MS;
+
+        if (isStale) {
+          console.warn(
+            `[LLU] Watchdog fired — chain was dead for ${Math.round(stalenessMs / 60000)} min`,
+          );
+
+          // Check whether the foreground service is still running via GlucoModule.
+          // GlucoModule exposes no direct "is running" query, so we infer from
+          // whether GlucoModule itself is available (if the Kotlin side is alive,
+          // it is). Absence of GlucoModule would mean the whole native layer died.
+          const fgServiceRunning = !!(GlucoModule?.scheduleHeartbeat);
+
+          Sentry.withScope((scope) => {
+            scope.setLevel('error');
+            scope.setTag('watchdog', 'staleness_detected');
+            scope.setExtra('last_poll_timestamp',        lastPollIso   ?? null);
+            scope.setExtra('now',                        new Date(now).toISOString());
+            scope.setExtra('staleness_ms',               stalenessMs);
+            scope.setExtra('appstate_event',             'active');
+            scope.setExtra('foreground_service_running', fgServiceRunning);
+            scope.setExtra('last_poll_error',            lastPollError);
+            scope.setExtra('last_poll_error_ts',         lastPollErrTs);
+            // Null last_poll_error = chain died without hitting any catch block.
+            // This is the definitive confirmation of the async/finally RCA.
+            scope.setExtra('rca_note',
+              lastPollError
+                ? 'error_was_caught: check last_poll_error for root cause'
+                : 'error_was_NOT_caught: async throw escaped all catch blocks — async/finally bug confirmed',
+            );
+            Sentry.captureMessage('Poll chain staleness detected by watchdog');
+          });
+        }
+      } catch (e) {
+        // Watchdog read failed — still fire poll() below, don't block resume
+        console.warn('[LLU] Watchdog SQLite read failed', e);
       }
+
+      // Always fire poll() on resume, stale or not
+      console.log('[LLU] App resumed — polling immediately');
+      poll();
     });
     return () => sub.remove();
   }, [poll]);

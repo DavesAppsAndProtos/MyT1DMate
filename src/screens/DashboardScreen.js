@@ -24,13 +24,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Switch,
+  Switch, // currently unused — only consumed by the commented-out Customise
+          // Dashboard modal below (v1.1.0). Kept imported for when it's
+          // reinstated rather than re-adding later.
 } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 import { getProfile, setProfileField } from '../database/db';
 import Svg, { Circle, Rect, Line, Ellipse, Path } from 'react-native-svg';
 import { Image } from 'react-native';
 import { t } from '../i18n/en';
+import { AUTO_GITHUB_RELEASE_URL } from '../config/autoRelease';
 
 SQLite.enablePromise(true);
 
@@ -161,7 +164,14 @@ export default function DashboardScreen({
       case 'weight':   onOpenWeight(); break;
       case 'suggest':  setSuggestVisible(true); break;
       case 'auto':
-        Alert.alert(t('androidAutoTitle'), t('androidAutoBody'));
+        // v1.1.0: Auto has shipped — copy updated from pre-launch "on its
+        // way" text, and a Get it here button added linking to the Auto
+        // GitHub release (currently AUTO_GITHUB_RELEASE_URL placeholder —
+        // see src/config/autoRelease.js, swap once published).
+        Alert.alert(t('androidAutoTitle'), t('androidAutoBody'), [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('androidAutoGetItBtn'), onPress: () => Linking.openURL(AUTO_GITHUB_RELEASE_URL) },
+        ]);
         break;
       case 'exercise':
       case 'morning':
@@ -213,7 +223,16 @@ export default function DashboardScreen({
         ))}
       </ScrollView>
 
-      {/* ── Customise Dashboard ───────────────────────────────────────────── */}
+      {/*
+        ── Customise Dashboard — commented out for v1.1.0, not deleted ────
+        Menu entry (SplitScreen.js DRAWER_ITEMS) and this screen route are
+        both parked until Exercise/Morning/Chat land and toggling tiles is
+        meaningful again. Underlying data model (ALL_TILES, tileVisibility,
+        DEFAULT_VISIBILITY, handleTileVisibilityChange above) is left fully
+        intact and still loads/saves from SQLite — only the UI entry point
+        into this modal has been removed. Now listed under Coming Soon.
+        See BRIEF v1.1.0 item 4.
+
       <Modal visible={customVisible} transparent animationType="slide" onRequestClose={() => setCustomVisible(false)}>
         <View style={styles.fullScreen}>
           <SafeAreaView style={{ flex: 1 }}>
@@ -244,6 +263,8 @@ export default function DashboardScreen({
           </SafeAreaView>
         </View>
       </Modal>
+
+      */}
 
       {/* ── HTT Modal ────────────────────────────────────────────────────── */}
       <HTTModal visible={httVisible} onClose={() => setHttVisible(false)} />

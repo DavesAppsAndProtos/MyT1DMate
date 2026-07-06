@@ -17,7 +17,10 @@
  *   1. TOC  (TermsScreen    — if toc_agreed !== 'true')
  *   2. Tour (OnboardingTour — if tour_done  !== 'true')
  *   3. LibreLinkUp setup (LibreLinkUpOnboardingScreen — if llup_confirmed !== 'true')
- *   4. What's New (whats_new_seen_v9 !== 'true' AND tour already done)
+ *   4. What's New (whats_new_seen_v1_1_0 !== 'true' AND tour already done)
+ *      v1.1.0: re-enabled — was suppressed for beta v1 pending updated
+ *      content. Flag renamed from whats_new_seen_v9 so it fires again for
+ *      existing users on this release (old v9 flag is now dead/ignored).
  *   5. Main app (SplitScreen)
  *
  * TOC and Tour show ONCE only on genuine first install.
@@ -321,13 +324,15 @@ export default function App() {
           return;
         }
 
-        // Step 4: What's New — suppressed for beta v1.
-        // Will be re-enabled for next beta drop with updated content.
-        // if (profile.whats_new_seen_v9 !== 'true' && profile.tour_done === 'true') {
-        //   initChat(name);
-        //   setScreen('whats_new');
-        //   return;
-        // }
+        // Step 4: What's New — v1.1.0: re-enabled with updated content
+        // (Android Auto). Flag renamed from whats_new_seen_v9 so this
+        // fires once for every user, including those who already saw the
+        // old v9 content pre-beta.
+        if (profile.whats_new_seen_v1_1_0 !== 'true' && profile.tour_done === 'true') {
+          initChat(name);
+          setScreen('whats_new');
+          return;
+        }
 
         // Step 5: all good — start the foreground service now that
         // onboarding is complete and we have credentials
@@ -362,18 +367,34 @@ export default function App() {
         {
           text: "Add a note",
           onPress: () => {
-            Sentry.showReportDialog({
-              eventId: lastId,
-              title: "Tell us what happened",
-              subtitle: "Your note goes straight to the dev team.",
-              subtitle2: "",
-              labelName: "Your name (optional)",
-              labelEmail: "Email (optional)",
-              labelComments: "What were you doing when it crashed?",
-              labelClose: "Cancel",
-              labelSubmit: "Send",
-              successMessage: "Thanks — this really helps! 💙",
-            });
+            // S26 RCA: Sentry.showReportDialog() was throwing
+            // "undefined is not a function" at bundle:1:615646, crashing
+            // the JS bundle and killing the poll chain overnight.
+            // The crash recovery dialog fires on next open after any crash —
+            // Android can also interact with it overnight via notification
+            // actions, triggering this onPress without user involvement.
+            // Fix: guard with typeof check + try/catch so a missing or
+            // broken showReportDialog can never crash the bundle.
+            try {
+              if (typeof Sentry.showReportDialog === 'function') {
+                Sentry.showReportDialog({
+                  eventId: lastId,
+                  title: "Tell us what happened",
+                  subtitle: "Your note goes straight to the dev team.",
+                  subtitle2: "",
+                  labelName: "Your name (optional)",
+                  labelEmail: "Email (optional)",
+                  labelComments: "What were you doing when it crashed?",
+                  labelClose: "Cancel",
+                  labelSubmit: "Send",
+                  successMessage: "Thanks — this really helps! 💙",
+                });
+              } else {
+                console.warn('[App] Sentry.showReportDialog not available — skipping');
+              }
+            } catch (e) {
+              console.warn('[App] Sentry.showReportDialog threw:', e?.message);
+            }
           },
         },
       ],
@@ -419,7 +440,14 @@ export default function App() {
   };
 
   const handleWhatsNewDone = async () => {
-    await setProfileField('whats_new_seen_v9', 'true');
+    await setProfileField('whats_new_seen_v1_1_0', 'true');
+    // v1.1.0: this path was unreachable while What's New was suppressed,
+    // so the missing startGlucoseService() call here was never exercised.
+    // Added to match handleTourDone/handleLLUPConnected — without it, a
+    // user landing on What's New during boot would reach 'chat' with the
+    // foreground service never started for that session.
+    await startGlucoseService();
+    initChat(userName);
     setScreen('chat');
   };
 

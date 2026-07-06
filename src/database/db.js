@@ -3,18 +3,27 @@
  * SQLite via react-native-sqlite-storage
  *
  * Tables:
- *   mate_profile      — user profile fields
+ *   mate_profile      — user profile fields (key-value store)
  *   exit_interview    — session notes
  *   glucose_readings  — CGM history (Session 7b, 90-day retention)
  *
  * glucose_readings schema:
  *   id          INTEGER PK AUTOINCREMENT
- *   timestamp   INTEGER  — epoch ms from GDH datetime field
- *   glucose     REAL     — mmol/L (already converted from mg/dL by FGS)
- *   trend       INTEGER  — 1-7
+ *   timestamp   INTEGER  — epoch ms from LLU datetime field
+ *   glucose     REAL     — mmol/L (converted from mg/dL by LibreLinkUpService)
+ *   trend       INTEGER  — 1-7 (mapped from LLU 1-5 via TREND_MAP)
  *   direction   TEXT     — "Flat", "SingleUp" etc
- *   delta       REAL     — bgdelta from GDH
+ *   delta       REAL     — always 0.0 (Abbott doesn't expose delta)
  *   recorded_at TEXT     — ISO8601 wall clock when row was written
+ *
+ * Session 26 — poll chain forensic profile keys (written by LibreLinkUpService):
+ *   last_poll_timestamp  — ISO string, written on every successful poll.
+ *                          Read by the staleness watchdog on AppState 'active'.
+ *   last_poll_error      — string (exception message + stack), or absent/null.
+ *                          Written on every poll failure; cleared on success.
+ *                          If null when watchdog fires → async/finally bug confirmed.
+ *   last_poll_error_ts   — ISO string, timestamp of the last recorded error.
+ *                          Written alongside last_poll_error; cleared on success.
  *
  * Retention: rows older than 90 days are pruned on every write.
  * No fabrication: if data is absent, queries return empty arrays.

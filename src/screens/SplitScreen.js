@@ -57,15 +57,44 @@ const getFreshnessLabel = (timestampMs) => {
 };
 
 // Session 14: Privacy Notice added
+// v1.1.0: Notifications and Accessibility removed as standalone entries —
+// relocated into the Coming Soon list (not deleted, just moved until built).
+// Customise Dashboard commented out, not deleted — underlying tile
+// visibility code (DashboardScreen) is left intact and this entry will
+// come back once Exercise/Morning/Chat land. Coming Soon added near the
+// bottom, above About.
 const DRAWER_ITEMS = [
   { id: 'settings',    label: () => t('menuSettings'),    emoji: '⚙️' },
-  { id: 'notifs',      label: () => t('menuNotifs'),      emoji: '🔔' },
-  { id: 'access',      label: () => t('menuAccess'),      emoji: '♿' },
-  { id: 'customise',   label: () => t('menuCustomise'),   emoji: '🎛️' },
+  // { id: 'notifs',   label: () => t('menuNotifs'),      emoji: '🔔' },
+  // { id: 'access',   label: () => t('menuAccess'),      emoji: '♿' },
+  // { id: 'customise',label: () => t('menuCustomise'),   emoji: '🎛️' },
   { id: 'privacy',     label: () => t('menuPrivacy'),     emoji: '🔒' },
   { id: 'terms',       label: () => t('menuTerms'),       emoji: '📋' },
   { id: 'replay_tour', label: () => t('menuReplayTour'),  emoji: '👋' },
+  { id: 'coming_soon', label: () => t('menuComingSoon'),  emoji: '🔜' },
+  { id: 'known_issues', label: () => t('menuKnownIssues'), emoji: '⚠️' }, // v1.1.0
   { id: 'about',       label: () => t('menuAbout'),       emoji: 'ℹ️' },
+];
+
+// v1.1.0: static informational list for the Coming Soon drawer entry —
+// no toggles, just a plain list. See BRIEF v1.1.0 item 2 for rationale.
+const COMING_SOON_ITEMS = [
+  { id: 'exercise',      label: () => t('comingSoonItemExercise') },
+  { id: 'morning',       label: () => t('comingSoonItemMorning') },
+  { id: 'reports',       label: () => t('comingSoonItemReports') },
+  { id: 'polling',       label: () => t('comingSoonItemPolling') },
+  { id: 'chat',          label: () => t('comingSoonItemChat') },
+  { id: 'notifications', label: () => t('comingSoonItemNotifications') },
+  { id: 'accessibility', label: () => t('comingSoonItemAccessibility') },
+  { id: 'customise',     label: () => t('comingSoonItemCustomise') },
+];
+
+// v1.1.0: Known Issues — main app only, Auto has no separate copy and
+// inherits this via shared display logic. Single place to update when
+// the polling fix or threshold-matching ships.
+const KNOWN_ISSUES_ITEMS = [
+  { id: 'polling',   title: () => t('knownIssuesItem1Title'), body: () => t('knownIssuesItem1Body') },
+  { id: 'threshold', title: () => t('knownIssuesItem2Title'), body: () => t('knownIssuesItem2Body') },
 ];
 
 export default function SplitScreen({
@@ -89,6 +118,8 @@ export default function SplitScreen({
   const [bottomView,     setBottomView]     = useState('dashboard');
   const [drawerOpen,     setDrawerOpen]     = useState(false);
   const [privacyVisible, setPrivacyVisible] = useState(false);
+  const [comingSoonVisible, setComingSoonVisible] = useState(false); // v1.1.0
+  const [knownIssuesVisible, setKnownIssuesVisible] = useState(false); // v1.1.0
 
   // ── Cache last known glucoData — never render blank after remount ──────────
   const lastGlucoRef = useRef(null);
@@ -173,13 +204,15 @@ export default function SplitScreen({
   // ── Android back button ───────────────────────────────────────────────────
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (knownIssuesVisible) { setKnownIssuesVisible(false); return true; }
+      if (comingSoonVisible) { setComingSoonVisible(false); return true; }
       if (privacyVisible) { setPrivacyVisible(false); return true; }
       if (drawerOpen)     { setDrawerOpen(false);     return true; }
       if (bottomView !== 'dashboard') { setBottomView('dashboard'); return true; }
       return false;
     });
     return () => handler.remove();
-  }, [bottomView, drawerOpen, privacyVisible]);
+  }, [bottomView, drawerOpen, privacyVisible, comingSoonVisible, knownIssuesVisible]);
 
   // ── Stable handlers ───────────────────────────────────────────────────────
   const customiseRef = useRef(null);
@@ -207,14 +240,18 @@ export default function SplitScreen({
     closeDrawer();
     switch (id) {
       case 'settings':    handleOpenSettings(); break;
-      case 'notifs':      Alert.alert(t('comingSoon'), t('comingSoonNotifs')); break;
-      case 'access':      Alert.alert(t('comingSoon'), t('comingSoonAccess')); break;
-      case 'customise':   onCustomiseDashboard?.(); break;
+      // v1.1.0: 'notifs' and 'access' removed — relocated into Coming Soon.
+      // case 'notifs':   Alert.alert(t('comingSoon'), t('comingSoonNotifs')); break;
+      // case 'access':   Alert.alert(t('comingSoon'), t('comingSoonAccess')); break;
+      // v1.1.0: 'customise' commented out, not deleted — see DRAWER_ITEMS note above.
+      // case 'customise':   onCustomiseDashboard?.(); break;
       case 'privacy':     setTimeout(() => setPrivacyVisible(true), 300); break;
       case 'terms':       onOpenTerms?.(); break;
       case 'replay_tour': onReplayTour?.(); break;
+      case 'coming_soon': setTimeout(() => setComingSoonVisible(true), 300); break;
+      case 'known_issues': setTimeout(() => setKnownIssuesVisible(true), 300); break; // v1.1.0
       case 'about':
-        Alert.alert(t('aboutTitle'), `${t('version')}\n\n${t('contactEmail')}`, [{ text: t('ok') }]);
+        Alert.alert(t('aboutTitle'), `${t('version')}\n\n${t('aboutCredits')}\n\n${t('contactEmail')}`, [{ text: t('ok') }]);
         break;
     }
   }, [onOpenSettings, onOpenTerms, onReplayTour, closeDrawer]);
@@ -355,6 +392,52 @@ export default function SplitScreen({
         </View>
       </Modal>
 
+      {/* ── COMING SOON (v1.1.0) ─────────────────────────────────────────── */}
+      <Modal visible={comingSoonVisible} animationType="slide" onRequestClose={() => setComingSoonVisible(false)}>
+        <View style={styles.privacyRoot}>
+          <View style={styles.privacyHeader}>
+            <TouchableOpacity onPress={() => setComingSoonVisible(false)} style={styles.privacyBack} activeOpacity={0.7}>
+              <Text style={styles.privacyBackText}>{t('privacyBack')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.privacyTitle}>{t('comingSoonScreenTitle')}</Text>
+            <View style={styles.privacyBack} />
+          </View>
+          <ScrollView style={styles.privacyScroll} contentContainerStyle={styles.privacyContent}>
+            <Text style={styles.privacyBody}>{t('comingSoonScreenIntro')}</Text>
+            <View style={{ height: 12 }} />
+            {COMING_SOON_ITEMS.map((item) => (
+              <View key={item.id} style={styles.comingSoonRow}>
+                <Text style={styles.comingSoonBullet}>•</Text>
+                <Text style={styles.comingSoonLabel}>{item.label()}</Text>
+              </View>
+            ))}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── KNOWN ISSUES (v1.1.0) ────────────────────────────────────────── */}
+      <Modal visible={knownIssuesVisible} animationType="slide" onRequestClose={() => setKnownIssuesVisible(false)}>
+        <View style={styles.privacyRoot}>
+          <View style={styles.privacyHeader}>
+            <TouchableOpacity onPress={() => setKnownIssuesVisible(false)} style={styles.privacyBack} activeOpacity={0.7}>
+              <Text style={styles.privacyBackText}>{t('privacyBack')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.privacyTitle}>{t('knownIssuesScreenTitle')}</Text>
+            <View style={styles.privacyBack} />
+          </View>
+          <ScrollView style={styles.privacyScroll} contentContainerStyle={styles.privacyContent}>
+            {KNOWN_ISSUES_ITEMS.map((item) => (
+              <View key={item.id} style={{ marginBottom: 20 }}>
+                <Text style={styles.privacyHeading}>{item.title()}</Text>
+                <Text style={styles.privacyBody}>{item.body()}</Text>
+              </View>
+            ))}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -461,4 +544,9 @@ const styles = StyleSheet.create({
   privacyDate:     { fontSize: 12, color: '#9CA3AF', marginBottom: 20 },
   privacyHeading:  { fontSize: 15, fontWeight: '700', color: '#1A1A2E', marginTop: 20, marginBottom: 6 },
   privacyBody:     { fontSize: 14, color: '#6B7280', lineHeight: 22 },
+
+  // Coming Soon (v1.1.0)
+  comingSoonRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  comingSoonBullet:{ fontSize: 14, color: '#003DA5', lineHeight: 20 },
+  comingSoonLabel: { fontSize: 15, color: '#1A1A2E', lineHeight: 20 },
 });

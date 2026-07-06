@@ -69,6 +69,18 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+// Release signing credentials are loaded from keystore.properties, which is
+// NOT committed (added to .gitignore — see HDJim notes). Previously these
+// lived here in plaintext; moved out so the password isn't sitting in the
+// repo. debug.keystore is the standard Android Studio default — fine to
+// keep referenced directly since it's not a secret (well-known password,
+// not used for any real signing).
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -79,8 +91,11 @@ android {
         applicationId "com.t1dmate"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // v1.1.0 — minor bump: Android Auto tile added, no breaking changes.
+        // Convention going forward: new tile/feature going live = minor bump,
+        // major reserved for actual breaking/architecture changes.
+        versionCode 2
+        versionName "1.1.0"
         missingDimensionStrategy 'react-native-camera', 'general'
     }
     signingConfigs {
@@ -90,6 +105,20 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            } else {
+                // No keystore.properties present (e.g. fresh checkout) —
+                // release builds will fail with a clear Gradle error rather
+                // than silently falling back to anything. Create
+                // keystore.properties from keystore.properties.example.
+                println("WARNING: keystore.properties not found — release signing will fail until it's created.")
+            }
+        }
     }
     buildTypes {
         debug {
@@ -98,7 +127,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
@@ -109,7 +138,12 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
-    implementation 'io.sentry:sentry-android:7.+'
+    implementation 'io.sentry:sentry-android:7.14.0'
+
+    // S26: WorkManager replaces AlarmManager for overnight poll heartbeat.
+    // No SCHEDULE_EXACT_ALARM permission needed. Survives Doze and process death.
+    // ktx variant gives coroutine support for CoroutineWorker.
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

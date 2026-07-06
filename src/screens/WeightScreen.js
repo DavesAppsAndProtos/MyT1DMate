@@ -720,12 +720,14 @@ const graph = StyleSheet.create({
   gridLine:  { position: 'absolute', height: 1, backgroundColor: 'rgba(0,0,0,0.06)' },
   segment:   { position: 'absolute', height: 2.5, backgroundColor: COLORS.primary, borderRadius: 1 },
   dot:       { position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, borderWidth: 2, borderColor: '#fff' },
+  // S26 P1: graph label text changed from COLORS.textSecondary (#6B7280 — low contrast
+  // on white graph bg) to #374151 (dark grey — matches GlucoseGraph axisLabel fix).
   // Y axis labels — LEFT side, Libre style
-  yLabel:    { position: 'absolute', fontSize: 10, color: COLORS.textSecondary },
+  yLabel:    { position: 'absolute', fontSize: 10, color: '#374151' },
   // Unit label — top left, above y-axis values
-  unitLabel: { position: 'absolute', fontSize: 10, color: COLORS.textSecondary, fontWeight: '600' },
+  unitLabel: { position: 'absolute', fontSize: 10, color: '#374151', fontWeight: '600' },
   // X axis date labels
-  xLabel:    { position: 'absolute', fontSize: 10, color: COLORS.textSecondary, width: 40, textAlign: 'center' },
+  xLabel:    { position: 'absolute', fontSize: 10, color: '#374151', width: 40, textAlign: 'center' },
 });
 
 // ── Calendar styles ───────────────────────────────────────────────────────────

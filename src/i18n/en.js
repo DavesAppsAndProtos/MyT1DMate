@@ -16,7 +16,8 @@ const strings = {
 
   // ── App ────────────────────────────────────────────────────────────────────
   appName:          'My T1D Mate',
-  version:          'Version 0.18 (Session 18)',
+  version:          'Version 1.1.0',
+  aboutCredits:     'Built by Sarah Short\nDevelopment: DavesAppsAndProtos, with AI collaboration (Claude, Anthropic)',
   contactEmail:     'myt1dmate@gmail.com',
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -46,9 +47,17 @@ const strings = {
   // ── Menu / drawer ─────────────────────────────────────────────────────────
   menuTitle:        'MENU',
   menuSettings:     'T1D Settings',
-  menuNotifs:       'Notifications',
-  menuAccess:       'Accessibility',
-  menuCustomise:    'Customise Dashboard',
+  // v1.1.0: Notifications and Accessibility removed as standalone drawer
+  // items — both relocated into the Coming Soon list below (menuComingSoon).
+  // menuNotifs:    'Notifications',
+  // menuAccess:    'Accessibility',
+  // v1.1.0: Customise Dashboard commented out, not deleted — the toggle
+  // mechanism (DashboardScreen ALL_TILES / tileVisibility) is left intact
+  // and this will come back once Exercise/Morning/Chat land and toggling
+  // is meaningful again. Also now listed under Coming Soon.
+  // menuCustomise: 'Customise Dashboard',
+  menuComingSoon:   'Coming Soon',
+  menuKnownIssues:  'Known Issues', // v1.1.0
   menuPrivacy:      'Privacy Notice',
   menuTerms:        'View Terms',
   menuReplayTour:   'Replay Tour',
@@ -57,9 +66,30 @@ const strings = {
   // ── About alert ───────────────────────────────────────────────────────────
   aboutTitle:       'My T1D Mate',
 
-  // ── Coming soon alerts ────────────────────────────────────────────────────
-  comingSoonNotifs: 'Your glucose is always visible — notification bar, status bar, even on your lock screen. Customise how it alerts you — coming soon.',
-  comingSoonAccess: 'Accessibility settings are on the way.',
+  // ── Coming Soon screen (v1.1.0) ───────────────────────────────────────────
+  // Static informational list — no toggles. Reframes the app as
+  // user-shapeable rather than "features we haven't built yet hidden as
+  // broken toggles".
+  comingSoonScreenTitle: 'Coming Soon',
+  comingSoonScreenIntro: "This app is shaped by what you need. Here's what's on the way:",
+  comingSoonItemExercise:      'Exercise tracking',
+  comingSoonItemMorning:       'Morning routine',
+  comingSoonItemReports:       'Reports',
+  comingSoonItemPolling:       'Adaptive polling',
+  comingSoonItemChat:          'Chat (premium)',
+  comingSoonItemNotifications: 'Notifications',
+  comingSoonItemAccessibility: 'Accessibility',
+  comingSoonItemCustomise:     'Customise Dashboard',
+
+  // ── Known Issues screen (v1.1.0) ──────────────────────────────────────────
+  // Main app only — Auto has no separate copy, inherits this via shared
+  // display logic. This is the single place to update when the polling
+  // fix or threshold-matching ships.
+  knownIssuesScreenTitle: 'Known Issues',
+  knownIssuesItem1Title: 'Background polling can pause',
+  knownIssuesItem1Body:  'Background polling can occasionally pause when the app is backgrounded for extended periods. If you see a ? on the status bar, the reading may be stale — just open the app to refresh.',
+  knownIssuesItem2Title: "Colour thresholds don't yet match LibreLink",
+  knownIssuesItem2Body:  "My T1D Mate's amber/red bands aren't currently aligned with LibreLink's own alert levels — a reading may show differently between the two apps. Always check your official LibreLink app for glucose alerts and treatment decisions. Threshold matching is planned for a future release.",
 
   // ── Dashboard tiles ───────────────────────────────────────────────────────
   tileChat:         'Chat',
@@ -77,7 +107,8 @@ const strings = {
 
   // ── Android Auto alert ────────────────────────────────────────────────────
   androidAutoTitle: 'Android Auto',
-  androidAutoBody:  "My T1D Mate is on its way to your dashboard. Glucose at a glance, hands-free.",
+  androidAutoBody:  "My T1D Mate now connects to Android Auto. Install My T1D Mate Auto and plug in — your glucose reading appears right on your car's dashboard, no separate login needed.",
+  androidAutoGetItBtn: 'Get it here',
 
   // ── HTT ───────────────────────────────────────────────────────────────────
   httTitle:         '📌  Hold That Thought',
@@ -308,7 +339,7 @@ const strings = {
   tourSlide5Title:  'Weight Tracker',
   tourSlide5Body:   'Log your weight and track trends over time. Your data stays on your device.',
   tourSlide6Title:  'Android Auto',
-  tourSlide6Body:   'My T1D Mate is on its way to your dashboard. Glucose at a glance, hands-free.',
+  tourSlide6Body:   'Glucose readings on your car dashboard, at a glance. Totally hands-free — one less thing to think about.',
   tourSlide7Title:  'Chat',
   tourSlide7Body:   'Coming soon — T1D Chat is on the way.',
   tourSlide8Title:  "You're all set",

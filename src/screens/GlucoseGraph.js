@@ -38,10 +38,13 @@ const DEFAULT_THRESHOLDS = {
 };
 
 // Session 27: Dave's softer clinical palette
+// Session 26 P1: axisLabel changed from #9CA3AF (light grey — unreadable on white)
+// to #374151 (dark grey — passes WCAG AA at 10px). Scrubber callout stays #FFFFFF
+// (white on diabetes-blue background — correct contrast, not affected by this change).
 const COLORS = {
   gridLine:         '#E5E7EB',
   targetBand:       '#ECFFC3',  // soft green — Dave's palette
-  axisLabel:        '#9CA3AF',
+  axisLabel:        '#374151',  // dark grey — readable on white bg (S26 P1)
   background:       '#FFFFFF',
   warnLine:         '#e7b416',  // amber — matches warning banner
   critLine:         '#cc3232',  // red   — matches critical low banner

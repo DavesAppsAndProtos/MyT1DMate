@@ -15,6 +15,17 @@
     <!-- Battery optimisation exemption prompt (requested at first launch via App.js) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!--
+      Per HDJim_v20: signature-level permission gating read access to
+      GlucoseStateProvider. Only apps signed with the SAME keystore as this
+      app are auto-granted this permission by Android — enforced at the OS
+      level, not by anything in this app's own code. Consumers (Auto, a
+      future watch app) declare <uses-permission> for this same name.
+    -->
+    <permission
+      android:name="com.t1dmate.provider.READ_GLUCOSE"
+      android:protectionLevel="signature" />
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
@@ -24,7 +35,9 @@
       android:theme="@style/AppTheme"
       android:networkSecurityConfig="@xml/network_security_config">
       
-      <receiver android:name=".PollAlarmReceiver" android:exported="false" />
+      <!-- S26: PollAlarmReceiver removed — replaced by WorkManager PollHeartbeatWorker.
+           WorkManager registers its own internal components via its manifest merger.
+           No manual receiver or permission declarations needed. -->
 
       <activity
         android:name=".MainActivity"
@@ -76,6 +89,19 @@
           android:name="android.app.PROPERTY_SPECIAL_USE_DESCRIPTION"
           android:value="Holds a persistent foreground notification displaying real-time CGM glucose readings from the LibreLinkUp cloud API. Notification content is updated by the app's JS polling layer." />
       </service>
+
+      <!--
+        Per HDJim_v20: exposes the current glucose state to any other app
+        signed with the same keystore (Auto today, a future watch app).
+        exported=true is required for cross-app access, but read access is
+        still gated by the signature-level READ_GLUCOSE permission above —
+        an app without that permission gets a SecurityException, not data.
+      -->
+      <provider
+        android:name=".GlucoseStateProvider"
+        android:authorities="com.t1dmate.provider"
+        android:exported="true"
+        android:readPermission="com.t1dmate.provider.READ_GLUCOSE" />
 
     </application>
 </manifest>

@@ -78,18 +78,18 @@ const TrendArrow = ({ trend }) => {
       {/* Arrowhead */}
       <Polygon
         points={`${cx},2 ${cx + 9},${headH + 2} ${cx - 9},${headH + 2}`}
-        fill="#FFFFFF"
+        fill="#1A1A2E"
       />
       {/* Shaft */}
       <Line
         x1={cx} y1={shaftTop} x2={cx} y2={shaftBot}
-        stroke="#FFFFFF" strokeWidth={shaftW} strokeLinecap="round"
+        stroke="#1A1A2E" strokeWidth={shaftW} strokeLinecap="round"
       />
       {/* Second shaft line for double-arrow (offset left) */}
       {isDouble && (
         <Line
           x1={cx - 7} y1={shaftTop + 4} x2={cx - 7} y2={shaftBot}
-          stroke="rgba(255,255,255,0.6)" strokeWidth={3} strokeLinecap="round"
+          stroke="rgba(26,26,46,0.5)" strokeWidth={3} strokeLinecap="round"
         />
       )}
     </Svg>
@@ -358,15 +358,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 0.3,
   },
+  // S26 P1b: all panel text changed white → black for outdoor legibility.
+  // Applies to all panel states (green/amber/orange/red).
+  // waitingValue + waitingLabel intentionally kept white — rendered on dark
+  // blue #1A3A6B waiting background where white is correct contrast.
   glucoseNumber: {
     fontSize: 72,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#1A1A2E',
     letterSpacing: -2,
     lineHeight: 80,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   readingMeta: {
     alignItems: 'flex-start',
@@ -376,25 +377,25 @@ const styles = StyleSheet.create({
   // trendArrow style removed — arrow is now a TrendArrow SVG component
   unitLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(26,26,46,0.75)',
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   deltaLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(26,26,46,0.85)',
     fontWeight: '600',
   },
   scrubTimeLabel: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#1A1A2E',
     fontWeight: '700',
     letterSpacing: 0.3,
   },
 
   freshness: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(26,26,46,0.75)',
     fontSize: 12,
     marginTop: 2,
     marginBottom: 8,

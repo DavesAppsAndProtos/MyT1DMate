@@ -2,6 +2,11 @@
  * My T1D Mate — WhatsNewScreen
  * Session 9: Shown once after each update. Skippable.
  * Jim populates. WorkshopDave refines copy before beta.
+ *
+ * v1.1.0: Content replaced — previous Session 9 items (dashboard, hamburger
+ * menu, dose calc, HTT, etc.) have long since shipped and are stale here.
+ * Re-enabled in App.js (was suppressed for beta v1) with fresh content for
+ * this release: Android Auto support.
  */
 
 import React from 'react';
@@ -13,7 +18,10 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
+  Linking,
 } from 'react-native';
+
+import { AUTO_GITHUB_RELEASE_URL } from '../config/autoRelease';
 
 const COLORS = {
   primary:      '#003DA5',
@@ -25,37 +33,13 @@ const COLORS = {
   border:       'rgba(0,0,0,0.08)',
 };
 
-// Session 9 — Jim populates, Dave refines
+// v1.1.0 — Jim populates, Dave refines
 const WHATS_NEW_ITEMS = [
   {
-    emoji: '🏠',
-    title: 'Dashboard is here',
-    body:  'Chat was the whole app. Now it\'s one tile among many. The dashboard is your new home.',
-  },
-  {
-    emoji: '☰',
-    title: 'Hamburger menu',
-    body:  'Settings, feedback, and more live in the menu top-left. The cog is gone.',
-  },
-  {
-    emoji: '💉',
-    title: 'Dose calculator',
-    body:  'Enter your carbs, get your units. Uses the ratio from your Settings. Free. Always.',
-  },
-  {
-    emoji: '📌',
-    title: 'Hold That Thought — simplified',
-    body:  'Pin anything in seconds. Categories gone for now — just pin it and find it later.',
-  },
-  {
     emoji: '🚗',
-    title: 'Android Auto — coming soon',
-    body:  'Glucose on your dashboard while you drive. It\'s coming.',
-  },
-  {
-    emoji: '🎛️',
-    title: 'Customise your dashboard',
-    body:  'Hide tiles you don\'t use. Show the ones you do. Your call.',
+    title: 'Android Auto support',
+    body:  'My T1D Mate now connects to Android Auto. Install My T1D Mate Auto and plug in — your glucose reading appears right on your car\'s dashboard, no separate login needed.',
+    link:  { label: 'Get it here', url: AUTO_GITHUB_RELEASE_URL },
   },
 ];
 
@@ -80,7 +64,7 @@ export default function WhatsNewScreen({ onDone }) {
       <View style={styles.header}>
         <Text style={styles.headerEmoji}>🎉</Text>
         <Text style={styles.headerTitle}>What's new in this update</Text>
-        <Text style={styles.headerSub}>Session 9 — May 2026</Text>
+        <Text style={styles.headerSub}>v1.1.0 — July 2026</Text>
       </View>
 
       {/* Items */}
@@ -95,6 +79,14 @@ export default function WhatsNewScreen({ onDone }) {
             <View style={styles.itemText}>
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemBody}>{item.body}</Text>
+              {item.link ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(item.link.url)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.itemLink}>{item.link.label} →</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </View>
         ))}
@@ -171,6 +163,7 @@ const styles = StyleSheet.create({
   itemText:  { flex: 1, gap: 2 },
   itemTitle: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
   itemBody:  { fontSize: 14, color: COLORS.textSecondary, lineHeight: 20 },
+  itemLink:  { fontSize: 14, color: COLORS.primary, fontWeight: '700', marginTop: 8 },
 
   footer: {
     padding: 24,
